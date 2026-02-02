@@ -1,0 +1,18 @@
+CREATE TABLE IF NOT EXISTS auth_users (
+  id BIGSERIAL PRIMARY KEY,
+
+  username VARCHAR(255) NOT NULL UNIQUE,
+  password VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL UNIQUE,
+
+  role VARCHAR(50) NOT NULL,
+
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+
+  account_not_expired BOOLEAN NOT NULL DEFAULT TRUE,
+  accounts_not_locked BOOLEAN NOT NULL DEFAULT TRUE,
+  credentials_not_expired BOOLEAN NOT NULL DEFAULT TRUE,
+  enabled BOOLEAN NOT NULL DEFAULT TRUE
+);
+

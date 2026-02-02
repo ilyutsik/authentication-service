@@ -1,0 +1,19 @@
+package com.innowise.authservice.service;
+
+import com.innowise.authservice.model.dto.request.RefreshTokenRequest;
+import com.innowise.authservice.model.dto.request.LoginRequest;
+import com.innowise.authservice.model.dto.request.UserRequest;
+import com.innowise.authservice.model.dto.request.ValidationTokenRequest;
+import com.innowise.authservice.model.dto.response.AuthenticationResponse;
+import com.innowise.authservice.model.dto.response.ValidationTokenResponse;
+
+public interface AuthService {
+
+  void register(UserRequest userRequest);
+
+  AuthenticationResponse login(LoginRequest loginRequest);
+
+  AuthenticationResponse refreshToken(RefreshTokenRequest refreshTokenRequest);
+
+  ValidationTokenResponse validateToken(ValidationTokenRequest validationTokenRequest);
+}

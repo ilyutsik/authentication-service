@@ -1,0 +1,19 @@
+spring:
+  application:
+    name: authservice-test
+
+  datasource:
+    hikari:
+      initialization-fail-timeout: 0
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+jwt:
+  secret: "superPuperMegaSecretnyKeyNeVzlomatNikakAnonimInkognito"
+  expiration: 3600000
+  refresh-expiration: 360000000
