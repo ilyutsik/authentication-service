@@ -1,8 +1,9 @@
-package com.innowise.authservice.config.jwt;
+package com.innowise.authservice.service.impl;
 
 import com.innowise.authservice.model.dto.response.AuthenticationResponse;
 import com.innowise.authservice.model.entity.User;
 import com.innowise.authservice.model.entity.type.RoleType;
+import com.innowise.authservice.service.JwtService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
@@ -22,7 +23,7 @@ import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
-public class JwtService {
+public class JwtServiceImpl implements JwtService {
 
   @Value("${jwt.secret}")
   String secret;
@@ -33,6 +34,7 @@ public class JwtService {
   @Value("${jwt.refresh-expiration}")
   Long refreshTokenExpiration;
 
+  @Override
   public AuthenticationResponse generateAuthToken(UserDetails userDetails) {
     AuthenticationResponse authResponse = new AuthenticationResponse();
     authResponse.setToken(generateToken(userDetails));
@@ -40,6 +42,7 @@ public class JwtService {
     return authResponse;
   }
 
+  @Override
   public AuthenticationResponse refreshToken(String refreshToken, UserDetails userDetails) {
     AuthenticationResponse authResponse = new AuthenticationResponse();
     authResponse.setToken(generateToken(userDetails));
@@ -47,28 +50,7 @@ public class JwtService {
     return authResponse;
   }
 
-  public String extractUsername(String token) {
-    return extractClaim(token, Claims::getSubject);
-  }
-
-  public Date extractExpiration(String token) {
-    return extractClaim(token, Claims::getExpiration);
-  }
-
-  public Long extractUserId(String token) {
-    return extractClaim(token, claims -> claims.get("userId", Long.class));
-  }
-
-  public RoleType extractRole(String token) {
-    return extractClaim(token, claims -> RoleType.valueOf(claims.get("role", String.class)));
-  }
-
-  public boolean validateToken(String token, UserDetails userDetails) {
-    String username = extractUsername(token);
-    return (username.equals(userDetails.getUsername()) && extractExpiration(token).before(
-        new Date()));
-  }
-
+  @Override
   public boolean isInvalid(String token) {
     try {
       extractAllClaims(token);
@@ -83,6 +65,26 @@ public class JwtService {
       log.error("Unexpected JWT validation error", e);
     }
     return true;
+  }
+
+  @Override
+  public String extractUsername(String token) {
+    return extractClaim(token, Claims::getSubject);
+  }
+
+  @Override
+  public Date extractExpiration(String token) {
+    return extractClaim(token, Claims::getExpiration);
+  }
+
+  @Override
+  public Long extractUserId(String token) {
+    return extractClaim(token, claims -> claims.get("userId", Long.class));
+  }
+
+  @Override
+  public RoleType extractRole(String token) {
+    return extractClaim(token, claims -> RoleType.valueOf(claims.get("role", String.class)));
   }
 
   private String generateToken(UserDetails userDetails) {

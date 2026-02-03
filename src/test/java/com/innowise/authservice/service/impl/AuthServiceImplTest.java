@@ -8,7 +8,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.innowise.authservice.config.jwt.JwtService;
 import com.innowise.authservice.exception.AuthenticationFailedException;
 import com.innowise.authservice.exception.InvalidRefreshTokenException;
 import com.innowise.authservice.exception.InvalidTokenException;
@@ -58,7 +57,7 @@ class AuthServiceImplTest {
   AuthenticationManager authenticationManager;
 
   @Mock
-  JwtService jwtService;
+  JwtServiceImpl jwtServiceImpl;
 
   @Mock
   CustomUserDetailsService customUserDetailsService;
@@ -142,7 +141,7 @@ class AuthServiceImplTest {
     when(userRepository.findByEmail("test@mail.com")).thenReturn(Optional.of(user));
     when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class))).thenReturn(authentication);
     when(authentication.getPrincipal()).thenReturn(userDetails);
-    when(jwtService.generateAuthToken(userDetails)).thenReturn(authenticationResponse);
+    when(jwtServiceImpl.generateAuthToken(userDetails)).thenReturn(authenticationResponse);
 
     AuthenticationResponse response = authService.login(loginRequest);
 
@@ -152,7 +151,7 @@ class AuthServiceImplTest {
     verify(userRepository, times(1)).findByEmail("test@mail.com");
     verify(authenticationManager, times(1)).authenticate(any());
     verify(authentication, times(1)).getPrincipal();
-    verify(jwtService, times(1)).generateAuthToken(userDetails);
+    verify(jwtServiceImpl, times(1)).generateAuthToken(userDetails);
   }
 
   @Test
@@ -194,20 +193,20 @@ class AuthServiceImplTest {
     authenticationResponse.setToken("token");
     authenticationResponse.setRefreshToken("refreshToken");
 
-    when(jwtService.isInvalid("refreshToken")).thenReturn(false);
-    when(jwtService.extractUsername("refreshToken")).thenReturn("test@mail.com");
+    when(jwtServiceImpl.isInvalid("refreshToken")).thenReturn(false);
+    when(jwtServiceImpl.extractUsername("refreshToken")).thenReturn("test@mail.com");
     when(customUserDetailsService.loadUserByUsername("test@mail.com")).thenReturn(userDetails);
-    when(jwtService.refreshToken("refreshToken", userDetails)).thenReturn(authenticationResponse);
+    when(jwtServiceImpl.refreshToken("refreshToken", userDetails)).thenReturn(authenticationResponse);
 
     AuthenticationResponse response = authService.refreshToken(refreshRequest);
 
     assertEquals("token", response.getToken());
     assertEquals("refreshToken", response.getRefreshToken());
 
-    verify(jwtService, times(1)).isInvalid("refreshToken");
-    verify(jwtService, times(1)).extractUsername("refreshToken");
+    verify(jwtServiceImpl, times(1)).isInvalid("refreshToken");
+    verify(jwtServiceImpl, times(1)).extractUsername("refreshToken");
     verify(customUserDetailsService, times(1)).loadUserByUsername("test@mail.com");
-    verify(jwtService, times(1)).refreshToken("refreshToken", userDetails);
+    verify(jwtServiceImpl, times(1)).refreshToken("refreshToken", userDetails);
   }
 
   @Test
@@ -215,11 +214,11 @@ class AuthServiceImplTest {
     RefreshTokenRequest refreshRequest = new RefreshTokenRequest();
     refreshRequest.setRefreshToken("refreshToken");
 
-    when(jwtService.isInvalid("refreshToken")).thenReturn(true);
+    when(jwtServiceImpl.isInvalid("refreshToken")).thenReturn(true);
 
     assertThrows(InvalidRefreshTokenException.class, () -> authService.refreshToken(refreshRequest));
 
-    verify(jwtService, times(1)).isInvalid("refreshToken");
+    verify(jwtServiceImpl, times(1)).isInvalid("refreshToken");
   }
 
   @Test
@@ -227,14 +226,14 @@ class AuthServiceImplTest {
     RefreshTokenRequest refreshRequest = new RefreshTokenRequest();
     refreshRequest.setRefreshToken("refreshToken");
 
-    when(jwtService.isInvalid("refreshToken")).thenReturn(false);
-    when(jwtService.extractUsername("refreshToken")).thenReturn("test@mail.com");
+    when(jwtServiceImpl.isInvalid("refreshToken")).thenReturn(false);
+    when(jwtServiceImpl.extractUsername("refreshToken")).thenReturn("test@mail.com");
     when(customUserDetailsService.loadUserByUsername("test@mail.com")).thenThrow(UserNotFoundException.class);
 
     assertThrows(UserNotFoundException.class, () -> authService.refreshToken(refreshRequest));
 
-    verify(jwtService, times(1)).isInvalid("refreshToken");
-    verify(jwtService, times(1)).extractUsername("refreshToken");
+    verify(jwtServiceImpl, times(1)).isInvalid("refreshToken");
+    verify(jwtServiceImpl, times(1)).extractUsername("refreshToken");
     verify(customUserDetailsService, times(1)).loadUserByUsername("test@mail.com");
   }
 
@@ -245,24 +244,24 @@ class AuthServiceImplTest {
 
     Date expiresAt = new Date(System.currentTimeMillis() + 1000);
 
-    when(jwtService.isInvalid("token")).thenReturn(false);
-    when(jwtService.extractUsername("token")).thenReturn("test@mail.com");
+    when(jwtServiceImpl.isInvalid("token")).thenReturn(false);
+    when(jwtServiceImpl.extractUsername("token")).thenReturn("test@mail.com");
     when(customUserDetailsService.loadUserByUsername("test@mail.com")).thenReturn(userDetails);
-    when(jwtService.extractRole("token")).thenReturn(RoleType.USER);
-    when(jwtService.extractUserId("token")).thenReturn(1L);
-    when(jwtService.extractExpiration("token")).thenReturn(expiresAt);
+    when(jwtServiceImpl.extractRole("token")).thenReturn(RoleType.USER);
+    when(jwtServiceImpl.extractUserId("token")).thenReturn(1L);
+    when(jwtServiceImpl.extractExpiration("token")).thenReturn(expiresAt);
 
     ValidationTokenResponse response = authService.validateToken(validationRequest);
 
     assertEquals("test@mail.com", response.getEmail());
     assertEquals(expiresAt, response.getExpiresAt());
 
-    verify(jwtService, times(1)).isInvalid("token");
-    verify(jwtService, times(1)).extractUsername("token");
+    verify(jwtServiceImpl, times(1)).isInvalid("token");
+    verify(jwtServiceImpl, times(1)).extractUsername("token");
     verify(customUserDetailsService, times(1)).loadUserByUsername("test@mail.com");
-    verify(jwtService, times(1)).extractRole("token");
-    verify(jwtService, times(1)).extractUserId("token");
-    verify(jwtService, times(1)).extractExpiration("token");
+    verify(jwtServiceImpl, times(1)).extractRole("token");
+    verify(jwtServiceImpl, times(1)).extractUserId("token");
+    verify(jwtServiceImpl, times(1)).extractExpiration("token");
   }
 
   @Test
@@ -270,11 +269,11 @@ class AuthServiceImplTest {
     ValidationTokenRequest validationRequest = new ValidationTokenRequest();
     validationRequest.setToken("token");
 
-    when(jwtService.isInvalid("token")).thenReturn(true);
+    when(jwtServiceImpl.isInvalid("token")).thenReturn(true);
 
     assertThrows(InvalidTokenException.class, () -> authService.validateToken(validationRequest));
 
-    verify(jwtService, times(1)).isInvalid("token");
+    verify(jwtServiceImpl, times(1)).isInvalid("token");
   }
 
   @Test
@@ -282,14 +281,14 @@ class AuthServiceImplTest {
     ValidationTokenRequest validationRequest = new ValidationTokenRequest();
     validationRequest.setToken("token");
 
-    when(jwtService.isInvalid("token")).thenReturn(false);
-    when(jwtService.extractUsername("token")).thenReturn("test@mail.com");
+    when(jwtServiceImpl.isInvalid("token")).thenReturn(false);
+    when(jwtServiceImpl.extractUsername("token")).thenReturn("test@mail.com");
     when(customUserDetailsService.loadUserByUsername("test@mail.com")).thenThrow(UserNotFoundException.class);
 
     assertThrows(TokenValidationException.class, () -> authService.validateToken(validationRequest));
 
-    verify(jwtService, times(1)).isInvalid("token");
-    verify(jwtService, times(1)).extractUsername("token");
+    verify(jwtServiceImpl, times(1)).isInvalid("token");
+    verify(jwtServiceImpl, times(1)).extractUsername("token");
     verify(customUserDetailsService, times(1)).loadUserByUsername("test@mail.com");
   }
 

@@ -1,6 +1,5 @@
 package com.innowise.authservice.service.impl;
 
-import com.innowise.authservice.config.jwt.JwtService;
 import com.innowise.authservice.exception.AuthenticationFailedException;
 import com.innowise.authservice.exception.InvalidRefreshTokenException;
 import com.innowise.authservice.exception.InvalidTokenException;
@@ -36,7 +35,7 @@ public class AuthServiceImpl implements AuthService {
 
   private final UserRepository userRepository;
   private final AuthenticationManager authenticationManager;
-  private final JwtService jwtService;
+  private final JwtServiceImpl jwtServiceImpl;
   private final UserMapper userMapper;
   private final PasswordEncoder passwordEncoder;
   private final CustomUserDetailsService customUserDetailsService;
@@ -78,41 +77,41 @@ public class AuthServiceImpl implements AuthService {
       throw new AuthenticationFailedException("Incorrect email or password");
     }
     log.info("Generate new jwt token for user: {}", userDetails.getUsername());
-    return jwtService.generateAuthToken(userDetails);
+    return jwtServiceImpl.generateAuthToken(userDetails);
   }
 
   @Override
   public AuthenticationResponse refreshToken(RefreshTokenRequest refreshTokenRequest) {
     String refreshToken = refreshTokenRequest.getRefreshToken();
-    if (jwtService.isInvalid(refreshToken)) {
+    if (jwtServiceImpl.isInvalid(refreshToken)) {
       log.error("Invalid refresh token");
       throw new InvalidRefreshTokenException();
     }
-    String email = jwtService.extractUsername(refreshToken);
+    String email = jwtServiceImpl.extractUsername(refreshToken);
     UserDetails userDetails = customUserDetailsService.loadUserByUsername(email);
     log.info("Generate new jwt token for user: {}", userDetails.getUsername());
-    return jwtService.refreshToken(refreshToken, userDetails);
+    return jwtServiceImpl.refreshToken(refreshToken, userDetails);
   }
 
   @Override
   public ValidationTokenResponse validateToken(ValidationTokenRequest validationTokenRequest) {
     String token = validationTokenRequest.getToken();
 
-    if (jwtService.isInvalid(token)) {
+    if (jwtServiceImpl.isInvalid(token)) {
       log.error("Invalid token");
       throw new InvalidTokenException();
     }
 
     try {
-      String username = jwtService.extractUsername(token);
+      String username = jwtServiceImpl.extractUsername(token);
       UserDetails userDetails = customUserDetailsService.loadUserByUsername(username);
 
       return ValidationTokenResponse.builder()
           .valid(true)
           .email(userDetails.getUsername())
-          .role(String.valueOf(jwtService.extractRole(token)))
-          .userId(jwtService.extractUserId(token))
-          .expiresAt(jwtService.extractExpiration(token))
+          .role(String.valueOf(jwtServiceImpl.extractRole(token)))
+          .userId(jwtServiceImpl.extractUserId(token))
+          .expiresAt(jwtServiceImpl.extractExpiration(token))
           .build();
     } catch (Exception e) {
       log.error("Unexpected token validation error: {}", e.getMessage());
