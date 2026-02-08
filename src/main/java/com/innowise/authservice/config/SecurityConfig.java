@@ -1,5 +1,6 @@
 package com.innowise.authservice.config;
 
+import com.innowise.authservice.model.entity.type.RoleType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -33,7 +34,7 @@ public class SecurityConfig {
             auth.requestMatchers("/api/v1/auth/**")
             .permitAll()
             .anyRequest()
-            .authenticated())
+                .hasRole(RoleType.ADMIN.name()))
         .sessionManagement(
             session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
