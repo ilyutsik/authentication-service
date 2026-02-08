@@ -1,6 +1,6 @@
 package com.innowise.authservice.config;
 
-import com.innowise.authservice.service.impl.JwtServiceImpl;
+import com.innowise.authservice.service.JwtService;
 import com.innowise.authservice.service.CustomUserDetailsService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -19,7 +19,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-  private final JwtServiceImpl jwtServiceImpl;
+  private final JwtService jwtService;
   private final CustomUserDetailsService userDetailsService;
 
   @Override
@@ -28,7 +28,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
       throws ServletException, IOException {
 
     String jwtToken = getTokenFromRequest(request);
-    if (jwtToken != null && !jwtServiceImpl.isInvalid(jwtToken)) {
+    if (jwtToken != null && !jwtService.isInvalid(jwtToken)) {
       setCustomUseDetailsToSecurityContextHolder(jwtToken);
     }
     filterChain.doFilter(request, response);
@@ -43,7 +43,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
   }
 
   private void setCustomUseDetailsToSecurityContextHolder(String jwtToken) {
-    String username = jwtServiceImpl.extractUsername(jwtToken);
+    String username = jwtService.extractEmail(jwtToken);
     UserDetails userDetails = userDetailsService.loadUserByUsername(username);
     UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
         userDetails, null, userDetails.getAuthorities());

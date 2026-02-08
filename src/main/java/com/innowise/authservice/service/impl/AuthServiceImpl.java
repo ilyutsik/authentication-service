@@ -1,5 +1,6 @@
 package com.innowise.authservice.service.impl;
 
+import com.innowise.authservice.config.security.AuthUserDetails;
 import com.innowise.authservice.exception.AuthenticationFailedException;
 import com.innowise.authservice.exception.InvalidRefreshTokenException;
 import com.innowise.authservice.exception.InvalidTokenException;
@@ -13,10 +14,11 @@ import com.innowise.authservice.model.dto.request.UserRequest;
 import com.innowise.authservice.model.dto.request.ValidationTokenRequest;
 import com.innowise.authservice.model.dto.response.AuthenticationResponse;
 import com.innowise.authservice.model.dto.response.ValidationTokenResponse;
-import com.innowise.authservice.model.entity.User;
-import com.innowise.authservice.repository.UserRepository;
+import com.innowise.authservice.model.entity.AuthUser;
+import com.innowise.authservice.repository.AuthUserRepository;
 import com.innowise.authservice.service.AuthService;
 import com.innowise.authservice.service.CustomUserDetailsService;
+import com.innowise.authservice.service.JwtService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -27,40 +29,41 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Transactional
 @Slf4j
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
 
-  private final UserRepository userRepository;
+  private final AuthUserRepository authUserRepository;
   private final AuthenticationManager authenticationManager;
-  private final JwtServiceImpl jwtServiceImpl;
+  private final JwtService jwtService;
   private final UserMapper userMapper;
   private final PasswordEncoder passwordEncoder;
   private final CustomUserDetailsService customUserDetailsService;
 
   @Override
   public void register(UserRequest userRequest) {
-    if (userRepository.findByEmail(userRequest.getEmail()).isPresent()) {
-      log.error("User already exist with email: {}", userRequest.getEmail());
+    if (authUserRepository.findByEmail(userRequest.getEmail()).isPresent()) {
+      log.error("User already exist with email");
       throw new UserAlreadyExistsException("email", userRequest.getEmail());
     }
-    if (userRepository.findByUsername(userRequest.getUsername()).isPresent()) {
+    if (authUserRepository.findByUsername(userRequest.getUsername()).isPresent()) {
       log.error("User already exist with username: {}", userRequest.getUsername());
       throw new UserAlreadyExistsException("username", userRequest.getUsername());
     }
-    User newUser = toEntity(userRequest);
-    newUser.setPassword(passwordEncoder.encode(userRequest.getPassword()));
+    AuthUser newAuthUser = toEntity(userRequest);
+    newAuthUser.setPassword(passwordEncoder.encode(userRequest.getPassword()));
 
-    userRepository.save(newUser);
-    log.info("Register user with email: {}", newUser.getEmail());
+    authUserRepository.save(newAuthUser);
   }
 
   @Override
   public AuthenticationResponse login(LoginRequest loginRequest) {
-    if (userRepository.findByEmail(loginRequest.getEmail()).isEmpty()) {
-      log.error("User not found with email: {}", loginRequest.getEmail());
+    if (authUserRepository.findByEmail(loginRequest.getEmail()).isEmpty()) {
+      log.error("User not found with email");
       throw new UserNotFoundException("email", loginRequest.getEmail());
     }
 
@@ -76,42 +79,47 @@ public class AuthServiceImpl implements AuthService {
       log.error("Incorrect email or password");
       throw new AuthenticationFailedException("Incorrect email or password");
     }
-    log.info("Generate new jwt token for user: {}", userDetails.getUsername());
-    return jwtServiceImpl.generateAuthToken(userDetails);
+    log.info("Generate new jwt token for user");
+    return jwtService.generateAuthToken(userDetails);
   }
 
   @Override
   public AuthenticationResponse refreshToken(RefreshTokenRequest refreshTokenRequest) {
     String refreshToken = refreshTokenRequest.getRefreshToken();
-    if (jwtServiceImpl.isInvalid(refreshToken)) {
+    if (jwtService.isInvalid(refreshToken)) {
       log.error("Invalid refresh token");
       throw new InvalidRefreshTokenException();
     }
-    String email = jwtServiceImpl.extractUsername(refreshToken);
+    String email = jwtService.extractEmail(refreshToken);
     UserDetails userDetails = customUserDetailsService.loadUserByUsername(email);
-    log.info("Generate new jwt token for user: {}", userDetails.getUsername());
-    return jwtServiceImpl.refreshToken(refreshToken, userDetails);
+    return jwtService.refreshToken(refreshToken, userDetails);
   }
 
   @Override
   public ValidationTokenResponse validateToken(ValidationTokenRequest validationTokenRequest) {
     String token = validationTokenRequest.getToken();
 
-    if (jwtServiceImpl.isInvalid(token)) {
+    if (jwtService.isInvalid(token)) {
       log.error("Invalid token");
       throw new InvalidTokenException();
     }
 
     try {
-      String username = jwtServiceImpl.extractUsername(token);
+      String username = jwtService.extractEmail(token);
       UserDetails userDetails = customUserDetailsService.loadUserByUsername(username);
+
+      if (userDetails instanceof AuthUserDetails authUserDetails
+          && !authUserDetails.isAccountNonLocked() && !authUserDetails.isEnabled()) {
+        log.warn("Token belongs to disabled or locked user");
+        throw new InvalidTokenException();
+      }
 
       return ValidationTokenResponse.builder()
           .valid(true)
           .email(userDetails.getUsername())
-          .role(String.valueOf(jwtServiceImpl.extractRole(token)))
-          .userId(jwtServiceImpl.extractUserId(token))
-          .expiresAt(jwtServiceImpl.extractExpiration(token))
+          .role(String.valueOf(jwtService.extractRole(token)))
+          .userId(jwtService.extractUserId(token))
+          .expiresAt(jwtService.extractExpiration(token))
           .build();
     } catch (Exception e) {
       log.error("Unexpected token validation error: {}", e.getMessage());
@@ -119,7 +127,7 @@ public class AuthServiceImpl implements AuthService {
     }
   }
 
-  private User toEntity(UserRequest userRequest) {
+  private AuthUser toEntity(UserRequest userRequest) {
     return userMapper.toEntity(userRequest);
   }
 }

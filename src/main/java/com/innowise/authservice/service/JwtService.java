@@ -13,7 +13,7 @@ public interface JwtService {
 
   boolean isInvalid(String token);
 
-  String extractUsername(String token);
+  String extractEmail(String token);
 
   Date extractExpiration(String token);
 

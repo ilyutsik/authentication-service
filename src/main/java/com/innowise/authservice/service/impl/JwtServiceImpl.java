@@ -1,7 +1,7 @@
 package com.innowise.authservice.service.impl;
 
+import com.innowise.authservice.config.security.AuthUserDetails;
 import com.innowise.authservice.model.dto.response.AuthenticationResponse;
-import com.innowise.authservice.model.entity.User;
 import com.innowise.authservice.model.entity.type.RoleType;
 import com.innowise.authservice.service.JwtService;
 import io.jsonwebtoken.Claims;
@@ -37,15 +37,15 @@ public class JwtServiceImpl implements JwtService {
   @Override
   public AuthenticationResponse generateAuthToken(UserDetails userDetails) {
     AuthenticationResponse authResponse = new AuthenticationResponse();
-    authResponse.setToken(generateToken(userDetails));
-    authResponse.setRefreshToken(generateRefreshToken(userDetails));
+    authResponse.setToken(generateToken(userDetails, tokenExpiration));
+    authResponse.setRefreshToken(generateToken(userDetails, refreshTokenExpiration));
     return authResponse;
   }
 
   @Override
   public AuthenticationResponse refreshToken(String refreshToken, UserDetails userDetails) {
     AuthenticationResponse authResponse = new AuthenticationResponse();
-    authResponse.setToken(generateToken(userDetails));
+    authResponse.setToken(generateToken(userDetails, tokenExpiration));
     authResponse.setRefreshToken(refreshToken);
     return authResponse;
   }
@@ -68,7 +68,7 @@ public class JwtServiceImpl implements JwtService {
   }
 
   @Override
-  public String extractUsername(String token) {
+  public String extractEmail(String token) {
     return extractClaim(token, Claims::getSubject);
   }
 
@@ -87,17 +87,17 @@ public class JwtServiceImpl implements JwtService {
     return extractClaim(token, claims -> RoleType.valueOf(claims.get("role", String.class)));
   }
 
-  private String generateToken(UserDetails userDetails) {
+  private String generateToken(UserDetails userDetails, Long expiration) {
     Map<String, Object> claims = new HashMap<>();
-
-    if (userDetails instanceof User user) {
-      claims.put("userId", user.getId());
-      claims.put("role", user.getRole().name());
+    String subject  = null;
+    if (userDetails instanceof AuthUserDetails authUserDetails) {
+      claims.put("userId", authUserDetails.getUserId());
+      claims.put("role", authUserDetails.getRole().name());
+      subject = authUserDetails.getEmail();
     }
 
-    String subject = userDetails.getUsername();
     long now = System.currentTimeMillis();
-    Date expire = new Date(now + tokenExpiration);
+    Date expire = new Date(now + expiration);
 
     return Jwts.builder()
         .setSubject(subject)
@@ -105,18 +105,6 @@ public class JwtServiceImpl implements JwtService {
         .setIssuedAt(new Date(now))
         .setExpiration(expire).
         signWith(getSigningKey(), SignatureAlgorithm.HS256)
-        .compact();
-  }
-
-  private String generateRefreshToken(UserDetails userDetails) {
-    long now = System.currentTimeMillis();
-    Date expire = new Date(now + refreshTokenExpiration);
-    String subject = userDetails.getUsername();
-    return Jwts.builder()
-        .setSubject(subject)
-        .setIssuedAt(new Date(now))
-        .setExpiration(expire)
-        .signWith(getSigningKey(), SignatureAlgorithm.HS256)
         .compact();
   }
 

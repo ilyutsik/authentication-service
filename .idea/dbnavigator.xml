@@ -31,12 +31,15 @@
     <last-used-providers />
   </component>
   <component name="DBNavigator.Project.DatabaseFileManager">
-    <open-files />
+    <open-files>
+      <object connection-id="f581e175-51eb-466e-a109-ed1cc06a3c18" object-ref="schemas/public/tables/refresh_tokens" />
+    </open-files>
   </component>
   <component name="DBNavigator.Project.DatabaseSessionManager">
     <connection id="f581e175-51eb-466e-a109-ed1cc06a3c18" />
   </component>
   <component name="DBNavigator.Project.DatasetFilterManager">
+    <filter-actions connection-id="f581e175-51eb-466e-a109-ed1cc06a3c18" dataset="public.refresh_tokens" active-filter-id="EMPTY_FILTER" />
     <filter-actions connection-id="f581e175-51eb-466e-a109-ed1cc06a3c18" dataset="public.databasechangeloglock" active-filter-id="EMPTY_FILTER" />
     <filter-actions connection-id="f581e175-51eb-466e-a109-ed1cc06a3c18" dataset="public.auth_users" active-filter-id="EMPTY_FILTER" />
     <filter-actions connection-id="f581e175-51eb-466e-a109-ed1cc06a3c18" dataset="public.databasechangelog" active-filter-id="EMPTY_FILTER" />

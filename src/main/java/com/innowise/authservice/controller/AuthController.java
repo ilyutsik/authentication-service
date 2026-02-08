@@ -7,6 +7,7 @@ import com.innowise.authservice.model.dto.request.ValidationTokenRequest;
 import com.innowise.authservice.model.dto.response.AuthenticationResponse;
 import com.innowise.authservice.model.dto.response.ValidationTokenResponse;
 import com.innowise.authservice.service.AuthService;
+import com.innowise.authservice.service.RefreshTokenService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,18 +25,18 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
   private final AuthService authService;
+  private final RefreshTokenService refreshTokenService;
 
   @PostMapping("/register")
   public ResponseEntity<String> register(@Valid @RequestBody UserRequest request) {
     authService.register(request);
-    log.info("User {} register successfully : ", request.getEmail());
     return ResponseEntity.status(HttpStatus.CREATED).body("User register successfully");
   }
 
   @PostMapping("/login")
   public ResponseEntity<AuthenticationResponse> login(@Valid @RequestBody LoginRequest request) {
     AuthenticationResponse response = authService.login(request);
-    log.info("User {} login successfully : ", request.getEmail());
+    refreshTokenService.save(response.getRefreshToken());
     return ResponseEntity.ok(response);
   }
 
@@ -43,7 +44,8 @@ public class AuthController {
   public ResponseEntity<AuthenticationResponse> refresh(
       @Valid @RequestBody RefreshTokenRequest request) {
     AuthenticationResponse response = authService.refreshToken(request);
-    log.info("Token refreshed successfully");
+    refreshTokenService.delete(request.getRefreshToken());
+    refreshTokenService.save(response.getRefreshToken());
     return ResponseEntity.ok(response);
   }
 
@@ -51,7 +53,6 @@ public class AuthController {
   public ResponseEntity<ValidationTokenResponse> validate(
       @Valid @RequestBody ValidationTokenRequest request) {
     ValidationTokenResponse response = authService.validateToken(request);
-    log.info("User : {} token validated successfully", response.getEmail());
     return ResponseEntity.ok(response);
   }
 }

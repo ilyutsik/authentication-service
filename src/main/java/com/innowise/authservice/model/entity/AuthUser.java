@@ -12,15 +12,10 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
-import java.util.Collection;
-import java.util.Collections;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
 
 @Entity
 @Table(name = "auth_users")
@@ -28,7 +23,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class User implements UserDetails {
+public class AuthUser {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -40,9 +35,11 @@ public class User implements UserDetails {
   @Column(name = "password", nullable = false, length = 100)
   private String password;
 
+  @Getter
   @Column(name = "email", unique = true, nullable = false, length = 100)
   private String email;
 
+  @Getter
   @Enumerated(EnumType.STRING)
   @Column(name = "role", nullable = false)
   private RoleType role;
@@ -92,32 +89,18 @@ public class User implements UserDetails {
     updatedAt = LocalDateTime.now();
   }
 
-  @Override
-  public Collection<? extends GrantedAuthority> getAuthorities() {
-    return Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role.name()));
-  }
-
-  @Override
-  public String getUsername() {
-    return email;
-  }
-
-  @Override
   public boolean isAccountNonExpired() {
     return accountNotExpired;
   }
 
-  @Override
   public boolean isAccountNonLocked() {
     return accountNotLocked;
   }
 
-  @Override
   public boolean isCredentialsNonExpired() {
     return credentialsNotExpired;
   }
 
-  @Override
   public boolean isEnabled() {
     return enabled;
   }
