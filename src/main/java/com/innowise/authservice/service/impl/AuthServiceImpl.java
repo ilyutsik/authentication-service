@@ -116,7 +116,7 @@ public class AuthServiceImpl implements AuthService {
 
       return ValidationTokenResponse.builder()
           .valid(true)
-          .email(userDetails.getUsername())
+          .email(username)
           .role(String.valueOf(jwtService.extractRole(token)))
           .userId(jwtService.extractUserId(token))
           .expiresAt(jwtService.extractExpiration(token))

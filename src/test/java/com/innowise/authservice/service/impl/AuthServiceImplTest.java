@@ -8,6 +8,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.innowise.authservice.config.security.AuthUserDetails;
 import com.innowise.authservice.exception.AuthenticationFailedException;
 import com.innowise.authservice.exception.InvalidRefreshTokenException;
 import com.innowise.authservice.exception.InvalidTokenException;
@@ -75,8 +76,9 @@ class AuthServiceImplTest {
     authUser.setEmail("test@mail.com");
     authUser.setUsername("andrei");
     authUser.setPassword("12345678");
+    authUser.setAccountNotLocked(true);
 
-    this.userDetails = authUser;
+    this.userDetails = new AuthUserDetails(authUser);
   }
 
   @Test

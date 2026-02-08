@@ -13,6 +13,7 @@ import com.innowise.authservice.model.dto.request.ValidationTokenRequest;
 import com.innowise.authservice.model.dto.response.AuthenticationResponse;
 import com.innowise.authservice.model.dto.response.ValidationTokenResponse;
 import com.innowise.authservice.repository.AuthUserRepository;
+import com.innowise.authservice.repository.RefreshTokenRepository;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,8 +33,12 @@ class AuthControllerTest extends IntegrationTestBase {
   @Autowired
   private AuthUserRepository authUserRepository;
 
+  @Autowired
+  private RefreshTokenRepository refreshTokenRepository;
+
   @BeforeEach
   void setUp() throws Exception {
+    refreshTokenRepository.deleteAll();
     authUserRepository.deleteAll();
     registerTestUser();
   }
