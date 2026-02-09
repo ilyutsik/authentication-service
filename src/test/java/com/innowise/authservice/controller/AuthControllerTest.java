@@ -3,6 +3,7 @@ package com.innowise.authservice.controller;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.innowise.authservice.IntegrationTestBase;
@@ -50,6 +51,7 @@ class AuthControllerTest extends IntegrationTestBase {
     userRequest.setPassword("12345678");
 
     mockMvc.perform(post("/api/v1/auth/register")
+            .with(user("admin").roles("ADMIN"))
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(userRequest)))
         .andExpect(status().isCreated())
@@ -79,6 +81,7 @@ class AuthControllerTest extends IntegrationTestBase {
     userRequest.setPassword("12345678");
 
     mockMvc.perform(post("/api/v1/auth/register")
+            .with(user("admin").roles("ADMIN"))
             .contentType(MediaType.APPLICATION_JSON)
             .content(objectMapper.writeValueAsString(userRequest)))
         .andExpect(status().isCreated())
@@ -93,7 +96,8 @@ class AuthControllerTest extends IntegrationTestBase {
     userRequest.setPassword("1234567i8");
 
     mockMvc.perform(post("/api/v1/auth/register")
-        .contentType(MediaType.APPLICATION_JSON)
+            .with(user("admin").roles("ADMIN"))
+            .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(userRequest)))
         .andExpect(status().isConflict());
   }
@@ -106,7 +110,8 @@ class AuthControllerTest extends IntegrationTestBase {
     userRequest.setPassword("1234567i8");
 
     mockMvc.perform(post("/api/v1/auth/register")
-        .contentType(MediaType.APPLICATION_JSON)
+            .with(user("admin").roles("ADMIN"))
+            .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(userRequest)))
         .andExpect(status().isConflict());
   }
@@ -119,7 +124,8 @@ class AuthControllerTest extends IntegrationTestBase {
     userRequest.setPassword("12345678");
 
     mockMvc.perform(post("/api/v1/auth/register")
-        .contentType(MediaType.APPLICATION_JSON)
+            .with(user("admin").roles("ADMIN"))
+            .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(userRequest)))
         .andExpect(status().isBadRequest());
   }
@@ -132,7 +138,8 @@ class AuthControllerTest extends IntegrationTestBase {
     userRequest.setPassword("");
 
     mockMvc.perform(post("/api/v1/auth/register")
-        .contentType(MediaType.APPLICATION_JSON)
+            .with(user("admin").roles("ADMIN"))
+            .contentType(MediaType.APPLICATION_JSON)
         .content(objectMapper.writeValueAsString(userRequest)))
         .andExpect(status().isBadRequest());
   }

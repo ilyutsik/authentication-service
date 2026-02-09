@@ -76,6 +76,7 @@ class AuthServiceImplTest {
     authUser.setEmail("test@mail.com");
     authUser.setUsername("andrei");
     authUser.setPassword("12345678");
+    authUser.setEnabled(true);
     authUser.setAccountNotLocked(true);
 
     this.userDetails = new AuthUserDetails(authUser);
