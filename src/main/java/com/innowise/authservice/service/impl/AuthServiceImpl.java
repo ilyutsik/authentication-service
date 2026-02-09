@@ -109,7 +109,7 @@ public class AuthServiceImpl implements AuthService {
       UserDetails userDetails = customUserDetailsService.loadUserByUsername(username);
 
       if (userDetails instanceof AuthUserDetails authUserDetails
-          && !authUserDetails.isAccountNonLocked() && !authUserDetails.isEnabled()) {
+          && (!authUserDetails.isAccountNonLocked() || !authUserDetails.isEnabled())) {
         log.warn("Token belongs to disabled or locked user");
         throw new InvalidTokenException();
       }
