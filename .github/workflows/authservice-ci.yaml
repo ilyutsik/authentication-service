@@ -64,7 +64,7 @@ jobs:
     name: CD - Main
     needs: ci-build-test-analysis-upload
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/tasks/USR-0')
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/tasks/AUTH-0')
 
     steps:
       - name: Checkout source code
