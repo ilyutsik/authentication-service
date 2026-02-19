@@ -20,9 +20,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+@ActiveProfiles("test")
 class AuthControllerTest extends IntegrationTestBase {
 
   @Autowired
@@ -39,8 +41,6 @@ class AuthControllerTest extends IntegrationTestBase {
 
   @BeforeEach
   void setUp() throws Exception {
-    refreshTokenRepository.deleteAll();
-    authUserRepository.deleteAll();
     registerTestUser();
   }
 
