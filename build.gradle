@@ -72,12 +72,12 @@ jacocoTestReport {
     afterEvaluate {
         classDirectories.setFrom(files(classDirectories.files.collect {
             fileTree(dir: it, exclude: [
-                    '**/config/**',
-                    '**/mapper/**',
-                    '**/dto/**',
-                    '**/model/**',
-                    '**/exception/**',
-                    '**/*Application.class'
+                    "**/config/**",
+                    "**/mapper/**",
+                    "**/dto/**",
+                    "**/model/**",
+                    "**/exception/**",
+                    "**/*Application.java"
             ])
         }))
     }
@@ -89,8 +89,9 @@ sonarqube {
         property "sonar.organization", "ilyutsik"
         property "sonar.host.url", "https://sonarcloud.io"
         property "sonar.exclusions", [
-                "**/client/**",
+                "**/config/**",
                 "**/mapper/**",
+                "**/dto/**",
                 "**/model/**",
                 "**/exception/**",
                 "**/*Application.java"
