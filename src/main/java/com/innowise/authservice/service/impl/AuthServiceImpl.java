@@ -1,24 +1,27 @@
 package com.innowise.authservice.service.impl;
 
 import com.innowise.authservice.config.security.AuthUserDetails;
+import com.innowise.authservice.exception.AuthUserAlreadyExistsException;
 import com.innowise.authservice.exception.AuthenticationFailedException;
 import com.innowise.authservice.exception.InvalidRefreshTokenException;
 import com.innowise.authservice.exception.InvalidTokenException;
 import com.innowise.authservice.exception.TokenValidationException;
-import com.innowise.authservice.exception.UserAlreadyExistsException;
 import com.innowise.authservice.exception.UserNotFoundException;
 import com.innowise.authservice.mapper.UserMapper;
 import com.innowise.authservice.model.dto.request.LoginRequest;
 import com.innowise.authservice.model.dto.request.RefreshTokenRequest;
-import com.innowise.authservice.model.dto.request.UserRequest;
+import com.innowise.authservice.model.dto.request.RegistrationRequestDto;
+import com.innowise.authservice.model.dto.request.UserRegistrationDto;
 import com.innowise.authservice.model.dto.request.ValidationTokenRequest;
 import com.innowise.authservice.model.dto.response.AuthenticationResponse;
+import com.innowise.authservice.model.dto.response.UserResponseDto;
 import com.innowise.authservice.model.dto.response.ValidationTokenResponse;
 import com.innowise.authservice.model.entity.AuthUser;
 import com.innowise.authservice.repository.AuthUserRepository;
 import com.innowise.authservice.service.AuthService;
 import com.innowise.authservice.service.CustomUserDetailsService;
 import com.innowise.authservice.service.JwtService;
+import com.innowise.authservice.service.UserServiceClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -43,21 +46,40 @@ public class AuthServiceImpl implements AuthService {
   private final UserMapper userMapper;
   private final PasswordEncoder passwordEncoder;
   private final CustomUserDetailsService customUserDetailsService;
+  private final UserServiceClient userServiceClient;
 
   @Override
-  public void register(UserRequest userRequest) {
-    if (authUserRepository.findByEmail(userRequest.getEmail()).isPresent()) {
+  public void register(RegistrationRequestDto registrationRequestDto) {
+    if (authUserRepository.findByEmail(registrationRequestDto.getEmail()).isPresent()) {
       log.error("User already exist with email");
-      throw new UserAlreadyExistsException("email", userRequest.getEmail());
+      throw new AuthUserAlreadyExistsException("email", registrationRequestDto.getEmail());
     }
-    if (authUserRepository.findByUsername(userRequest.getUsername()).isPresent()) {
-      log.error("User already exist with username: {}", userRequest.getUsername());
-      throw new UserAlreadyExistsException("username", userRequest.getUsername());
+    if (authUserRepository.findByUsername(registrationRequestDto.getUsername()).isPresent()) {
+      log.error("User already exist with username: {}", registrationRequestDto.getUsername());
+      throw new AuthUserAlreadyExistsException("username", registrationRequestDto.getUsername());
     }
-    AuthUser newAuthUser = toEntity(userRequest);
-    newAuthUser.setPassword(passwordEncoder.encode(userRequest.getPassword()));
+    UserRegistrationDto userRegistrationDto = userMapper.toUserRegistrationDto(
+        registrationRequestDto);
 
-    authUserRepository.save(newAuthUser);
+    UserResponseDto createdUser = userServiceClient.create(userRegistrationDto);
+
+    try {
+      AuthUser newAuthUser = userMapper.toEntity(registrationRequestDto);
+      newAuthUser.setId(createdUser.getId());
+      newAuthUser.setPassword(passwordEncoder.encode(registrationRequestDto.getPassword()));
+
+      authUserRepository.save(newAuthUser);
+    } catch (Exception ex) {
+
+      if (createdUser != null && createdUser.getId() != null) {
+        try {
+          userServiceClient.delete(createdUser.getId());
+        } catch (Exception rollbackEx) {
+          log.error("Rollback failed for user id {}", createdUser.getId(), rollbackEx);
+        }
+      }
+      throw ex;
+    }
   }
 
   @Override
@@ -125,9 +147,5 @@ public class AuthServiceImpl implements AuthService {
       log.error("Unexpected token validation error: {}", e.getMessage());
       throw new TokenValidationException("Failed validate token: " + e.getMessage());
     }
-  }
-
-  private AuthUser toEntity(UserRequest userRequest) {
-    return userMapper.toEntity(userRequest);
   }
 }

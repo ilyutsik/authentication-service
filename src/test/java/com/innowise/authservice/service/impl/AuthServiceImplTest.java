@@ -3,29 +3,36 @@ package com.innowise.authservice.service.impl;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.innowise.authservice.config.security.AuthUserDetails;
+import com.innowise.authservice.exception.AuthUserAlreadyExistsException;
 import com.innowise.authservice.exception.AuthenticationFailedException;
 import com.innowise.authservice.exception.InvalidRefreshTokenException;
 import com.innowise.authservice.exception.InvalidTokenException;
 import com.innowise.authservice.exception.TokenValidationException;
-import com.innowise.authservice.exception.UserAlreadyExistsException;
 import com.innowise.authservice.exception.UserNotFoundException;
 import com.innowise.authservice.mapper.UserMapper;
 import com.innowise.authservice.model.dto.request.LoginRequest;
 import com.innowise.authservice.model.dto.request.RefreshTokenRequest;
-import com.innowise.authservice.model.dto.request.UserRequest;
+import com.innowise.authservice.model.dto.request.RegistrationRequestDto;
+import com.innowise.authservice.model.dto.request.UserRegistrationDto;
 import com.innowise.authservice.model.dto.request.ValidationTokenRequest;
 import com.innowise.authservice.model.dto.response.AuthenticationResponse;
+import com.innowise.authservice.model.dto.response.UserResponseDto;
 import com.innowise.authservice.model.dto.response.ValidationTokenResponse;
 import com.innowise.authservice.model.entity.AuthUser;
 import com.innowise.authservice.model.entity.type.RoleType;
 import com.innowise.authservice.repository.AuthUserRepository;
 import com.innowise.authservice.service.CustomUserDetailsService;
+import java.time.LocalDate;
 import java.util.Date;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -63,14 +70,26 @@ class AuthServiceImplTest {
   @Mock
   CustomUserDetailsService customUserDetailsService;
 
+  @Mock
+  UserServiceClientImpl userServiceClient;
+
   @Spy
   UserMapper userMapper = Mappers.getMapper(UserMapper.class);
 
-  private UserDetails userDetails;
   private AuthUser authUser;
+  private UserDetails userDetails;
+  private RegistrationRequestDto registrationRequestDto;
 
   @BeforeEach
   void setUp() {
+    registrationRequestDto = new RegistrationRequestDto();
+    registrationRequestDto.setName("andrei");
+    registrationRequestDto.setSurname("ilyutsik");
+    registrationRequestDto.setUsername("andrei");
+    registrationRequestDto.setBirthDate(LocalDate.of(2000, 2, 2));
+    registrationRequestDto.setEmail("test@mail.com");
+    registrationRequestDto.setPassword("12345678");
+
     authUser = new AuthUser();
     authUser.setId(1L);
     authUser.setEmail("test@mail.com");
@@ -84,49 +103,51 @@ class AuthServiceImplTest {
 
   @Test
   void register_Success() {
-    UserRequest userRequest = new UserRequest();
-    userRequest.setUsername("andrei");
-    userRequest.setEmail("test@mail.com");
-    userRequest.setPassword("12345678");
+    UserResponseDto createdUser = new UserResponseDto();
+    createdUser.setId(1L);
 
     when(authUserRepository.findByEmail("test@mail.com")).thenReturn(Optional.empty());
     when(authUserRepository.findByUsername("andrei")).thenReturn(Optional.empty());
-    when(passwordEncoder.encode("12345678")).thenReturn("87654321");
+    when(userServiceClient.create(any(UserRegistrationDto.class))).thenReturn(createdUser);
+    when(passwordEncoder.encode("12345678")).thenReturn("encoded");
 
-    authService.register(userRequest);
+    authService.register(registrationRequestDto);
 
-    verify(authUserRepository, times(1)).findByEmail("test@mail.com");
-    verify(authUserRepository, times(1)).findByUsername("andrei");
-    verify(passwordEncoder, times(1)).encode("12345678");
-    verify(authUserRepository, times(1)).save(any(AuthUser.class));
+    verify(authUserRepository).findByEmail("test@mail.com");
+    verify(authUserRepository).findByUsername("andrei");
+    verify(userServiceClient).create(any(UserRegistrationDto.class));
+    verify(passwordEncoder).encode("12345678");
+    verify(authUserRepository).save(any(AuthUser.class));
+    verify(userServiceClient, never()).delete(anyLong());
   }
 
   @Test
-  void register_UserAlreadyExist_withEmail() {
-    UserRequest userRequest = new UserRequest();
-    userRequest.setUsername("andrei");
-    userRequest.setEmail("test@mail.com");
-    userRequest.setPassword("12345678");
+  void register_EmailAlreadyExists() {
+    when(authUserRepository.findByEmail("test@mail.com"))
+        .thenReturn(Optional.of(new AuthUser()));
 
-    when(authUserRepository.findByEmail("test@mail.com")).thenReturn(Optional.of(new AuthUser()));
+    assertThrows(AuthUserAlreadyExistsException.class,
+        () -> authService.register(registrationRequestDto));
 
-    assertThrows(UserAlreadyExistsException.class, () -> authService.register(userRequest));
-
-    verify(authUserRepository, times(1)).findByEmail("test@mail.com");
+    verify(userServiceClient, never()).create(any());
+    verify(authUserRepository, never()).save(any());
   }
 
   @Test
-  void register_UserAlreadyExist_withUsername() {
-    UserRequest userRequest = new UserRequest();
-    userRequest.setUsername("andrei");
-    userRequest.setEmail("test@mail.com");
-    userRequest.setPassword("12345678");
+  void register_SaveFails_ShouldRollbackUserService() {
+    UserResponseDto createdUser = new UserResponseDto();
+    createdUser.setId(10L);
 
-    when(authUserRepository.findByUsername("andrei")).thenReturn(Optional.of(new AuthUser()));
+    when(authUserRepository.findByEmail(anyString())).thenReturn(Optional.empty());
+    when(authUserRepository.findByUsername(anyString())).thenReturn(Optional.empty());
+    when(userServiceClient.create(any(UserRegistrationDto.class))).thenReturn(createdUser);
+    when(passwordEncoder.encode(anyString())).thenReturn("encoded");
 
-    assertThrows(UserAlreadyExistsException.class, () -> authService.register(userRequest));
+    doThrow(new RuntimeException("DB error")).when(authUserRepository).save(any(AuthUser.class));
 
-    verify(authUserRepository, times(1)).findByUsername("andrei");
+    assertThrows(RuntimeException.class, () -> authService.register(registrationRequestDto));
+
+    verify(userServiceClient).delete(10L);
   }
 
   @Test
@@ -143,7 +164,8 @@ class AuthServiceImplTest {
 
     when(authUserRepository.findByEmail("test@mail.com")).thenReturn(Optional.of(
         authUser));
-    when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class))).thenReturn(authentication);
+    when(authenticationManager.authenticate(
+        any(UsernamePasswordAuthenticationToken.class))).thenReturn(authentication);
     when(authentication.getPrincipal()).thenReturn(userDetails);
     when(jwtServiceImpl.generateAuthToken(userDetails)).thenReturn(authenticationResponse);
 
@@ -177,7 +199,6 @@ class AuthServiceImplTest {
     loginRequest.setEmail("test@mail.com");
     loginRequest.setPassword("12345678");
 
-
     when(authUserRepository.findByEmail("test@mail.com")).thenReturn(Optional.of(
         authUser));
     when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
@@ -186,7 +207,8 @@ class AuthServiceImplTest {
     assertThrows(AuthenticationFailedException.class, () -> authService.login(loginRequest));
 
     verify(authUserRepository, times(1)).findByEmail("test@mail.com");
-    verify(authenticationManager, times(1)).authenticate(any(UsernamePasswordAuthenticationToken.class));
+    verify(authenticationManager, times(1)).authenticate(
+        any(UsernamePasswordAuthenticationToken.class));
   }
 
   @Test
@@ -201,7 +223,8 @@ class AuthServiceImplTest {
     when(jwtServiceImpl.isInvalid("refreshToken")).thenReturn(false);
     when(jwtServiceImpl.extractEmail("refreshToken")).thenReturn("test@mail.com");
     when(customUserDetailsService.loadUserByUsername("test@mail.com")).thenReturn(userDetails);
-    when(jwtServiceImpl.refreshToken("refreshToken", userDetails)).thenReturn(authenticationResponse);
+    when(jwtServiceImpl.refreshToken("refreshToken", userDetails)).thenReturn(
+        authenticationResponse);
 
     AuthenticationResponse response = authService.refreshToken(refreshRequest);
 
@@ -221,7 +244,8 @@ class AuthServiceImplTest {
 
     when(jwtServiceImpl.isInvalid("refreshToken")).thenReturn(true);
 
-    assertThrows(InvalidRefreshTokenException.class, () -> authService.refreshToken(refreshRequest));
+    assertThrows(InvalidRefreshTokenException.class,
+        () -> authService.refreshToken(refreshRequest));
 
     verify(jwtServiceImpl, times(1)).isInvalid("refreshToken");
   }
@@ -233,7 +257,8 @@ class AuthServiceImplTest {
 
     when(jwtServiceImpl.isInvalid("refreshToken")).thenReturn(false);
     when(jwtServiceImpl.extractEmail("refreshToken")).thenReturn("test@mail.com");
-    when(customUserDetailsService.loadUserByUsername("test@mail.com")).thenThrow(UserNotFoundException.class);
+    when(customUserDetailsService.loadUserByUsername("test@mail.com")).thenThrow(
+        UserNotFoundException.class);
 
     assertThrows(UserNotFoundException.class, () -> authService.refreshToken(refreshRequest));
 
@@ -288,13 +313,14 @@ class AuthServiceImplTest {
 
     when(jwtServiceImpl.isInvalid("token")).thenReturn(false);
     when(jwtServiceImpl.extractEmail("token")).thenReturn("test@mail.com");
-    when(customUserDetailsService.loadUserByUsername("test@mail.com")).thenThrow(UserNotFoundException.class);
+    when(customUserDetailsService.loadUserByUsername("test@mail.com")).thenThrow(
+        UserNotFoundException.class);
 
-    assertThrows(TokenValidationException.class, () -> authService.validateToken(validationRequest));
+    assertThrows(TokenValidationException.class,
+        () -> authService.validateToken(validationRequest));
 
     verify(jwtServiceImpl, times(1)).isInvalid("token");
     verify(jwtServiceImpl, times(1)).extractEmail("token");
     verify(customUserDetailsService, times(1)).loadUserByUsername("test@mail.com");
   }
-
 }

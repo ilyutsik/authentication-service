@@ -6,15 +6,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.tomakehurst.wiremock.client.WireMock;
 import com.innowise.authservice.IntegrationTestBase;
 import com.innowise.authservice.model.dto.request.LoginRequest;
 import com.innowise.authservice.model.dto.request.RefreshTokenRequest;
-import com.innowise.authservice.model.dto.request.UserRequest;
+import com.innowise.authservice.model.dto.request.RegistrationRequestDto;
 import com.innowise.authservice.model.dto.request.ValidationTokenRequest;
 import com.innowise.authservice.model.dto.response.AuthenticationResponse;
 import com.innowise.authservice.model.dto.response.ValidationTokenResponse;
 import com.innowise.authservice.repository.AuthUserRepository;
 import com.innowise.authservice.repository.RefreshTokenRepository;
+import java.time.LocalDate;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,26 +43,45 @@ class AuthControllerTest extends IntegrationTestBase {
 
   @BeforeEach
   void setUp() throws Exception {
+    WireMock.configureFor(wiremock.getHost(), wiremock.getMappedPort(8080));
+    WireMock.reset();
     registerTestUser();
   }
 
   private void registerTestUser() throws Exception {
-    UserRequest userRequest = new UserRequest();
-    userRequest.setUsername("test1");
-    userRequest.setEmail("test1@mail");
-    userRequest.setPassword("12345678");
+    WireMock.stubFor(WireMock.post(WireMock.urlEqualTo("/api/v1/users"))
+        .willReturn(WireMock.aResponse()
+            .withStatus(201)
+            .withHeader("Content-Type", "application/json")
+            .withBody("""
+                {
+                  "id": %d,
+                  "name": "Test",
+                  "surname": "User",
+                  "email": "%s",
+                  "active": true
+                }
+                """.formatted(1, "test1@mail.com"))
+        ));
+    RegistrationRequestDto registrationRequestDto = new RegistrationRequestDto();
+    registrationRequestDto.setName("Test");
+    registrationRequestDto.setSurname("User");
+    registrationRequestDto.setUsername("test1");
+    registrationRequestDto.setBirthDate(LocalDate.of(2000, 1, 1));
+    registrationRequestDto.setEmail("test1@mail.com");
+    registrationRequestDto.setPassword("12345678");
 
     mockMvc.perform(post("/api/v1/auth/register")
             .with(user("admin").roles("ADMIN"))
             .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(userRequest)))
+            .content(objectMapper.writeValueAsString(registrationRequestDto)))
         .andExpect(status().isCreated())
         .andExpect(content().string("User register successfully"));
   }
 
   private AuthenticationResponse loginTestUser() throws Exception {
     LoginRequest loginRequest = new LoginRequest();
-    loginRequest.setEmail("test1@mail");
+    loginRequest.setEmail("test1@mail.com");
     loginRequest.setPassword("12345678");
 
     MvcResult result = mockMvc.perform(
@@ -73,81 +94,115 @@ class AuthControllerTest extends IntegrationTestBase {
         AuthenticationResponse.class);
   }
 
+  private void stubUser(Long userId) {
+    WireMock.stubFor(WireMock.post(WireMock.urlEqualTo("/api/v1/users"))
+        .willReturn(WireMock.aResponse()
+            .withStatus(200)
+            .withHeader("Content-Type", "application/json")
+            .withBody("""
+                {
+                  "id": %d,
+                  "name": "Andrei",
+                  "surname": "Ilyutsik",
+                  "email": "ilyutsik.andrei@gmail.com",
+                  "active": true
+                }
+                """.formatted(userId))
+        ));
+  }
+
   @Test
   void register_shouldRegisterUserSuccessfully() throws Exception {
-    UserRequest userRequest = new UserRequest();
-    userRequest.setUsername("andrei");
-    userRequest.setEmail("andrei@mail");
-    userRequest.setPassword("12345678");
+    Long userId = 1L;
+    stubUser(userId);
+
+    RegistrationRequestDto registrationRequestDto = new RegistrationRequestDto();
+    registrationRequestDto.setName("andrei");
+    registrationRequestDto.setSurname("ilyutsik");
+    registrationRequestDto.setUsername("andrei");
+    registrationRequestDto.setBirthDate(LocalDate.of(2000, 2, 2));
+    registrationRequestDto.setEmail("test@mail.com");
+    registrationRequestDto.setPassword("12345678");
 
     mockMvc.perform(post("/api/v1/auth/register")
             .with(user("admin").roles("ADMIN"))
             .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(userRequest)))
+            .content(objectMapper.writeValueAsString(registrationRequestDto)))
         .andExpect(status().isCreated())
         .andExpect(content().string("User register successfully"));
   }
 
   @Test
   void register_whenUsernameExist_shouldReturnConflict() throws Exception {
-    UserRequest userRequest = new UserRequest();
-    userRequest.setUsername("test1");
-    userRequest.setEmail("andre@mail");
-    userRequest.setPassword("1234567i8");
+    RegistrationRequestDto registrationRequestDto = new RegistrationRequestDto();
+    registrationRequestDto.setName("andrei");
+    registrationRequestDto.setSurname("ilyutsik");
+    registrationRequestDto.setUsername("test1");
+    registrationRequestDto.setBirthDate(LocalDate.of(2000, 2, 2));
+    registrationRequestDto.setEmail("test@mail.com");
+    registrationRequestDto.setPassword("12345678");
 
     mockMvc.perform(post("/api/v1/auth/register")
             .with(user("admin").roles("ADMIN"))
             .contentType(MediaType.APPLICATION_JSON)
-        .content(objectMapper.writeValueAsString(userRequest)))
+        .content(objectMapper.writeValueAsString(registrationRequestDto)))
         .andExpect(status().isConflict());
   }
 
   @Test
   void register_whenEmailExist_shouldReturnConflict() throws Exception {
-    UserRequest userRequest = new UserRequest();
-    userRequest.setUsername("andrei");
-    userRequest.setEmail("test1@mail");
-    userRequest.setPassword("1234567i8");
+    RegistrationRequestDto registrationRequestDto = new RegistrationRequestDto();
+    registrationRequestDto.setName("andrei");
+    registrationRequestDto.setSurname("ilyutsik");
+    registrationRequestDto.setUsername("test1");
+    registrationRequestDto.setBirthDate(LocalDate.of(2000, 2, 2));
+    registrationRequestDto.setEmail("test1@mail.com");
+    registrationRequestDto.setPassword("12345678");
 
     mockMvc.perform(post("/api/v1/auth/register")
             .with(user("admin").roles("ADMIN"))
             .contentType(MediaType.APPLICATION_JSON)
-        .content(objectMapper.writeValueAsString(userRequest)))
+        .content(objectMapper.writeValueAsString(registrationRequestDto)))
         .andExpect(status().isConflict());
   }
 
   @Test
   void register_whenEmailInvalid_shouldReturnBadRequest() throws Exception {
-    UserRequest userRequest = new UserRequest();
-    userRequest.setUsername("andrei");
-    userRequest.setEmail("andrei");
-    userRequest.setPassword("12345678");
+    RegistrationRequestDto registrationRequestDto = new RegistrationRequestDto();
+    registrationRequestDto.setName("andrei");
+    registrationRequestDto.setSurname("ilyutsik");
+    registrationRequestDto.setUsername("test1");
+    registrationRequestDto.setBirthDate(LocalDate.of(2000, 2, 2));
+    registrationRequestDto.setPassword("12345678");
 
     mockMvc.perform(post("/api/v1/auth/register")
             .with(user("admin").roles("ADMIN"))
             .contentType(MediaType.APPLICATION_JSON)
-        .content(objectMapper.writeValueAsString(userRequest)))
+        .content(objectMapper.writeValueAsString(registrationRequestDto)))
         .andExpect(status().isBadRequest());
   }
 
   @Test
   void register_whenEmptyFields_shouldReturnBadRequest() throws Exception {
-    UserRequest userRequest = new UserRequest();
-    userRequest.setUsername("");
-    userRequest.setEmail("");
-    userRequest.setPassword("");
+    RegistrationRequestDto registrationRequestDto = new RegistrationRequestDto();
+    registrationRequestDto.setName("");
+    registrationRequestDto.setSurname("");
+    registrationRequestDto.setUsername("");
+    registrationRequestDto.setBirthDate(LocalDate.of(2000, 2, 2));
+    registrationRequestDto.setEmail("");
+    registrationRequestDto.setPassword("");
 
     mockMvc.perform(post("/api/v1/auth/register")
             .with(user("admin").roles("ADMIN"))
             .contentType(MediaType.APPLICATION_JSON)
-        .content(objectMapper.writeValueAsString(userRequest)))
+        .content(objectMapper.writeValueAsString(registrationRequestDto)))
         .andExpect(status().isBadRequest());
   }
 
   @Test
   void login_shouldReturnAuthenticationResponse() throws Exception {
     LoginRequest loginRequest = new LoginRequest();
-    loginRequest.setEmail("test1@mail");
+    loginRequest.setEmail("test1@mail.com");
     loginRequest.setPassword("12345678");
 
     MvcResult result = mockMvc.perform(
@@ -191,7 +246,7 @@ class AuthControllerTest extends IntegrationTestBase {
   @Test
   void login_whenPasswordWrong_shouldThrowUnauthorized() throws Exception {
     LoginRequest loginRequest = new LoginRequest();
-    loginRequest.setEmail("test1@mail");
+    loginRequest.setEmail("test1@mail.com");
     loginRequest.setPassword("11111111");
 
     mockMvc.perform(post("/api/v1/auth/login")

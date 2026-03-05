@@ -2,18 +2,6 @@ version: '3.9'
 
 services:
 
-  auth-service:
-    container_name: auth-service
-    build: .
-    env_file:
-      - .env
-    environment:
-      - SPRING_PROFILES_ACTIVE=docker
-    ports:
-      - "8082:8082"
-    depends_on:
-        - postgres
-
   postgres:
     image: postgres:14
     container_name: auth-service-db
@@ -27,6 +15,21 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  auth-service:
+    container_name: auth-service
+    build: .
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      SPRING_PROFILES_ACTIVE: docker
+    ports:
+      - "8082:8082"
+    depends_on:
+        - postgres
 
 volumes:
   postgres_data:
