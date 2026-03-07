@@ -2,11 +2,25 @@ package com.innowise.authservice.model.dto.request;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
-import lombok.Data;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 
-@Data
-public class UserRequest {
+@Getter
+@Setter
+@ToString
+@NoArgsConstructor
+@AllArgsConstructor
+public class AuthRegistrationDto {
+
+  @NotNull(message = "Id is required")
+  @Positive(message = "Id must be positive")
+  private Long id;
 
   @NotBlank(message = "Username is required")
   @Size(min = 2, max = 50, message = "Username must be between 2 and 50 characters")

@@ -1,5 +1,7 @@
 package com.innowise.authservice.exception;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.security.SignatureException;
 import java.time.LocalDateTime;
@@ -27,8 +29,8 @@ public class GlobalExceptionHandler {
     return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
   }
 
-  @ExceptionHandler(UserAlreadyExistsException.class)
-  public ResponseEntity<ErrorResponse> handleUserAlreadyExist(UserAlreadyExistsException ex) {
+  @ExceptionHandler(AuthUserAlreadyExistsException.class)
+  public ResponseEntity<ErrorResponse> handleUserAlreadyExist(AuthUserAlreadyExistsException ex) {
     log.error("User already exist: {}", ex.getMessage());
     ErrorResponse errorResponse = new ErrorResponse(HttpStatus.CONFLICT.value(),
         LocalDateTime.now(), "User Already Exist", ex.getMessage());
@@ -111,6 +113,25 @@ public class GlobalExceptionHandler {
     ValidationErrorResponse response = new ValidationErrorResponse(HttpStatus.BAD_REQUEST.value(),
         LocalDateTime.now(), "Validation Failed", errors);
     return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+  }
+
+  @ExceptionHandler(UserRegistrationException.class)
+  public ResponseEntity<ErrorResponse> handleWebClientResponseException(
+      UserRegistrationException ex) {
+    HttpStatus status = HttpStatus.valueOf(ex.getStatus().value());
+    ErrorResponse error = null;
+    try {
+      ObjectMapper mapper = new ObjectMapper();
+      JsonNode node = mapper.readTree(ex.getResponseBody());
+      String message = node.get("message").asText();
+
+      error = new ErrorResponse(status.value(), LocalDateTime.now(), status.getReasonPhrase(),
+          message);
+    } catch (Exception e) {
+      error = new ErrorResponse(status.value(), LocalDateTime.now(), status.getReasonPhrase(),
+          e.getMessage());
+    }
+    return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
   }
 
   @ExceptionHandler(Exception.class)
