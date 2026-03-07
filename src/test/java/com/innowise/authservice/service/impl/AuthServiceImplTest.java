@@ -12,6 +12,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.innowise.authservice.client.UserOperationService;
 import com.innowise.authservice.config.security.AuthUserDetails;
 import com.innowise.authservice.exception.AuthUserAlreadyExistsException;
 import com.innowise.authservice.exception.AuthenticationFailedException;
@@ -71,7 +72,7 @@ class AuthServiceImplTest {
   CustomUserDetailsService customUserDetailsService;
 
   @Mock
-  UserServiceClientImpl userServiceClient;
+  UserOperationService userOperationService;
 
   @Spy
   UserMapper userMapper = Mappers.getMapper(UserMapper.class);
@@ -108,17 +109,17 @@ class AuthServiceImplTest {
 
     when(authUserRepository.findByEmail("test@mail.com")).thenReturn(Optional.empty());
     when(authUserRepository.findByUsername("andrei")).thenReturn(Optional.empty());
-    when(userServiceClient.create(any(UserRegistrationDto.class))).thenReturn(createdUser);
+    when(userOperationService.create(any(UserRegistrationDto.class))).thenReturn(createdUser);
     when(passwordEncoder.encode("12345678")).thenReturn("encoded");
 
     authService.register(registrationRequestDto);
 
     verify(authUserRepository).findByEmail("test@mail.com");
     verify(authUserRepository).findByUsername("andrei");
-    verify(userServiceClient).create(any(UserRegistrationDto.class));
+    verify(userOperationService).create(any(UserRegistrationDto.class));
     verify(passwordEncoder).encode("12345678");
     verify(authUserRepository).save(any(AuthUser.class));
-    verify(userServiceClient, never()).delete(anyLong());
+    verify(userOperationService, never()).delete(anyLong());
   }
 
   @Test
@@ -129,7 +130,7 @@ class AuthServiceImplTest {
     assertThrows(AuthUserAlreadyExistsException.class,
         () -> authService.register(registrationRequestDto));
 
-    verify(userServiceClient, never()).create(any());
+    verify(userOperationService, never()).create(any());
     verify(authUserRepository, never()).save(any());
   }
 
@@ -140,14 +141,14 @@ class AuthServiceImplTest {
 
     when(authUserRepository.findByEmail(anyString())).thenReturn(Optional.empty());
     when(authUserRepository.findByUsername(anyString())).thenReturn(Optional.empty());
-    when(userServiceClient.create(any(UserRegistrationDto.class))).thenReturn(createdUser);
+    when(userOperationService.create(any(UserRegistrationDto.class))).thenReturn(createdUser);
     when(passwordEncoder.encode(anyString())).thenReturn("encoded");
 
     doThrow(new RuntimeException("DB error")).when(authUserRepository).save(any(AuthUser.class));
 
     assertThrows(RuntimeException.class, () -> authService.register(registrationRequestDto));
 
-    verify(userServiceClient).delete(10L);
+    verify(userOperationService).delete(10L);
   }
 
   @Test

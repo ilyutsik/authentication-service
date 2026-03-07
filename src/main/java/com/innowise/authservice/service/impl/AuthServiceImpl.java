@@ -1,5 +1,6 @@
 package com.innowise.authservice.service.impl;
 
+import com.innowise.authservice.client.UserOperationService;
 import com.innowise.authservice.config.security.AuthUserDetails;
 import com.innowise.authservice.exception.AuthUserAlreadyExistsException;
 import com.innowise.authservice.exception.AuthenticationFailedException;
@@ -21,7 +22,6 @@ import com.innowise.authservice.repository.AuthUserRepository;
 import com.innowise.authservice.service.AuthService;
 import com.innowise.authservice.service.CustomUserDetailsService;
 import com.innowise.authservice.service.JwtService;
-import com.innowise.authservice.service.UserServiceClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -46,7 +46,7 @@ public class AuthServiceImpl implements AuthService {
   private final UserMapper userMapper;
   private final PasswordEncoder passwordEncoder;
   private final CustomUserDetailsService customUserDetailsService;
-  private final UserServiceClient userServiceClient;
+  private final UserOperationService userOperationService;
 
   @Override
   public void register(RegistrationRequestDto registrationRequestDto) {
@@ -61,7 +61,7 @@ public class AuthServiceImpl implements AuthService {
     UserRegistrationDto userRegistrationDto = userMapper.toUserRegistrationDto(
         registrationRequestDto);
 
-    UserResponseDto createdUser = userServiceClient.create(userRegistrationDto);
+    UserResponseDto createdUser = userOperationService.create(userRegistrationDto);
 
     try {
       AuthUser newAuthUser = userMapper.toEntity(registrationRequestDto);
@@ -73,7 +73,7 @@ public class AuthServiceImpl implements AuthService {
 
       if (createdUser != null && createdUser.getId() != null) {
         try {
-          userServiceClient.delete(createdUser.getId());
+          userOperationService.delete(createdUser.getId());
         } catch (Exception rollbackEx) {
           log.error("Rollback failed for user id {}", createdUser.getId(), rollbackEx);
         }

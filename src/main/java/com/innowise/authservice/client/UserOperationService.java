@@ -1,10 +1,8 @@
-package com.innowise.authservice.service.impl;
+package com.innowise.authservice.client;
 
-import com.innowise.authservice.client.UserClient;
 import com.innowise.authservice.exception.UserRegistrationException;
 import com.innowise.authservice.model.dto.request.UserRegistrationDto;
 import com.innowise.authservice.model.dto.response.UserResponseDto;
-import com.innowise.authservice.service.UserServiceClient;
 import feign.FeignException;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
@@ -13,17 +11,15 @@ import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
-public class UserServiceClientImpl implements UserServiceClient {
+public class UserOperationService {
 
   private final UserClient userClient;
 
-  @Override
   @CircuitBreaker(name = "userService", fallbackMethod = "userFallbackCreate")
   public UserResponseDto create(UserRegistrationDto dto) {
     return userClient.create(dto);
   }
 
-  @Override
   @CircuitBreaker(name = "userService", fallbackMethod = "userFallbackDelete")
   public void delete(Long id) {
     userClient.delete(id);
@@ -38,7 +34,8 @@ public class UserServiceClientImpl implements UserServiceClient {
       throw new UserRegistrationException(status, body, ex);
     }
 
-    throw new UserRegistrationException(HttpStatus.INTERNAL_SERVER_ERROR, t.getMessage(), t);
+    throw new UserRegistrationException(HttpStatus.INTERNAL_SERVER_ERROR,
+        t.getMessage() + dto.getName(), t);
   }
 
   private UserResponseDto userFallbackDelete(Long id, Throwable t) {
@@ -50,6 +47,6 @@ public class UserServiceClientImpl implements UserServiceClient {
       throw new UserRegistrationException(status, body, ex);
     }
 
-    throw new UserRegistrationException(HttpStatus.INTERNAL_SERVER_ERROR, t.getMessage(), t);
+    throw new UserRegistrationException(HttpStatus.INTERNAL_SERVER_ERROR, t.getMessage() + id, t);
   }
 }
