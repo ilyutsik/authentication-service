@@ -1,18 +1,21 @@
 package com.innowise.authservice.service.impl;
 
+import com.innowise.authservice.client.UserOperationService;
 import com.innowise.authservice.config.security.AuthUserDetails;
+import com.innowise.authservice.exception.AuthUserAlreadyExistsException;
 import com.innowise.authservice.exception.AuthenticationFailedException;
 import com.innowise.authservice.exception.InvalidRefreshTokenException;
 import com.innowise.authservice.exception.InvalidTokenException;
 import com.innowise.authservice.exception.TokenValidationException;
-import com.innowise.authservice.exception.UserAlreadyExistsException;
 import com.innowise.authservice.exception.UserNotFoundException;
 import com.innowise.authservice.mapper.UserMapper;
 import com.innowise.authservice.model.dto.request.LoginRequest;
 import com.innowise.authservice.model.dto.request.RefreshTokenRequest;
-import com.innowise.authservice.model.dto.request.UserRequest;
+import com.innowise.authservice.model.dto.request.RegistrationRequestDto;
+import com.innowise.authservice.model.dto.request.UserRegistrationDto;
 import com.innowise.authservice.model.dto.request.ValidationTokenRequest;
 import com.innowise.authservice.model.dto.response.AuthenticationResponse;
+import com.innowise.authservice.model.dto.response.UserResponseDto;
 import com.innowise.authservice.model.dto.response.ValidationTokenResponse;
 import com.innowise.authservice.model.entity.AuthUser;
 import com.innowise.authservice.repository.AuthUserRepository;
@@ -43,21 +46,44 @@ public class AuthServiceImpl implements AuthService {
   private final UserMapper userMapper;
   private final PasswordEncoder passwordEncoder;
   private final CustomUserDetailsService customUserDetailsService;
+  private final UserOperationService userOperationService;
 
+  /**
+   * Registers a new user in the system.
+   *
+   * <p>The registration flow follows the order: <strong>User Service → Auth Service</strong>.
+   * User Service is the source of truth for user profile data and generates the {@code userId}.
+   * Auth Service stores authentication credentials (username, password) and references this {@code userId}.</p>
+   *
+   * @param registrationRequestDto DTO containing user registration data: name, surname, username, email, password, birthDate.
+   * @throws AuthUserAlreadyExistsException if the email or username already exists.
+   * @throws RuntimeException for other errors during user creation or rollback.
+   */
   @Override
-  public void register(UserRequest userRequest) {
-    if (authUserRepository.findByEmail(userRequest.getEmail()).isPresent()) {
+  public void register(RegistrationRequestDto registrationRequestDto) {
+    if (authUserRepository.findByEmail(registrationRequestDto.getEmail()).isPresent()) {
       log.error("User already exist with email");
-      throw new UserAlreadyExistsException("email", userRequest.getEmail());
+      throw new AuthUserAlreadyExistsException("email", registrationRequestDto.getEmail());
     }
-    if (authUserRepository.findByUsername(userRequest.getUsername()).isPresent()) {
-      log.error("User already exist with username: {}", userRequest.getUsername());
-      throw new UserAlreadyExistsException("username", userRequest.getUsername());
+    if (authUserRepository.findByUsername(registrationRequestDto.getUsername()).isPresent()) {
+      log.error("User already exist with username: {}", registrationRequestDto.getUsername());
+      throw new AuthUserAlreadyExistsException("username", registrationRequestDto.getUsername());
     }
-    AuthUser newAuthUser = toEntity(userRequest);
-    newAuthUser.setPassword(passwordEncoder.encode(userRequest.getPassword()));
+    UserRegistrationDto userRegistrationDto = userMapper.toUserRegistrationDto(
+        registrationRequestDto);
 
-    authUserRepository.save(newAuthUser);
+    UserResponseDto createdUser = userOperationService.create(userRegistrationDto);
+
+    try {
+      AuthUser newAuthUser = userMapper.toEntity(registrationRequestDto);
+      newAuthUser.setId(createdUser.getId());
+      newAuthUser.setPassword(passwordEncoder.encode(registrationRequestDto.getPassword()));
+
+      authUserRepository.save(newAuthUser);
+    } catch (Exception ex) {
+      rollbackUserCreation(createdUser, ex);
+      throw ex;
+    }
   }
 
   @Override
@@ -127,7 +153,17 @@ public class AuthServiceImpl implements AuthService {
     }
   }
 
-  private AuthUser toEntity(UserRequest userRequest) {
-    return userMapper.toEntity(userRequest);
+  private void rollbackUserCreation(UserResponseDto createdUser, Exception originalEx) {
+    Long userId = createdUser.getId();
+    if (userId == null) {
+      return;
+    }
+
+    try {
+      userOperationService.delete(userId);
+    } catch (Exception rollbackEx) {
+      log.error("Rollback failed for user id {}", userId, rollbackEx);
+      originalEx.addSuppressed(rollbackEx);
+    }
   }
 }

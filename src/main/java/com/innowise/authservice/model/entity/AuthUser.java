@@ -5,8 +5,6 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
@@ -26,7 +24,6 @@ import lombok.Setter;
 public class AuthUser {
 
   @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
   @Column(name = "username", unique = true, nullable = false, length = 50)
@@ -53,7 +50,7 @@ public class AuthUser {
   @Column(name = "account_not_expired", nullable = false)
   private Boolean accountNotExpired;
 
-  @Column(name = "accounts_not_locked", nullable = false)
+  @Column(name = "account_not_locked", nullable = false)
   private Boolean accountNotLocked;
 
   @Column(name = "credentials_not_expired", nullable = false)
