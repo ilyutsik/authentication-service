@@ -131,7 +131,7 @@ public class GlobalExceptionHandler {
       error = new ErrorResponse(status.value(), LocalDateTime.now(), status.getReasonPhrase(),
           e.getMessage());
     }
-    return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    return new ResponseEntity<>(error, status);
   }
 
   @ExceptionHandler(Exception.class)

@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS auth_users (
   updated_at TIMESTAMP NOT NULL,
 
   account_not_expired BOOLEAN NOT NULL DEFAULT TRUE,
-  accounts_not_locked BOOLEAN NOT NULL DEFAULT TRUE,
+  account_not_locked BOOLEAN NOT NULL DEFAULT TRUE,
   credentials_not_expired BOOLEAN NOT NULL DEFAULT TRUE,
   enabled BOOLEAN NOT NULL DEFAULT TRUE
 );

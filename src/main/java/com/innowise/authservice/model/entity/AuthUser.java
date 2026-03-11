@@ -50,7 +50,7 @@ public class AuthUser {
   @Column(name = "account_not_expired", nullable = false)
   private Boolean accountNotExpired;
 
-  @Column(name = "accounts_not_locked", nullable = false)
+  @Column(name = "account_not_locked", nullable = false)
   private Boolean accountNotLocked;
 
   @Column(name = "credentials_not_expired", nullable = false)

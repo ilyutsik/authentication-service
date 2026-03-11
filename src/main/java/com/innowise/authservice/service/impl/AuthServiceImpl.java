@@ -48,6 +48,17 @@ public class AuthServiceImpl implements AuthService {
   private final CustomUserDetailsService customUserDetailsService;
   private final UserOperationService userOperationService;
 
+  /**
+   * Registers a new user in the system.
+   *
+   * <p>The registration flow follows the order: <strong>User Service → Auth Service</strong>.
+   * User Service is the source of truth for user profile data and generates the {@code userId}.
+   * Auth Service stores authentication credentials (username, password) and references this {@code userId}.</p>
+   *
+   * @param registrationRequestDto DTO containing user registration data: name, surname, username, email, password, birthDate.
+   * @throws AuthUserAlreadyExistsException if the email or username already exists.
+   * @throws RuntimeException for other errors during user creation or rollback.
+   */
   @Override
   public void register(RegistrationRequestDto registrationRequestDto) {
     if (authUserRepository.findByEmail(registrationRequestDto.getEmail()).isPresent()) {
@@ -70,14 +81,7 @@ public class AuthServiceImpl implements AuthService {
 
       authUserRepository.save(newAuthUser);
     } catch (Exception ex) {
-
-      if (createdUser != null && createdUser.getId() != null) {
-        try {
-          userOperationService.delete(createdUser.getId());
-        } catch (Exception rollbackEx) {
-          log.error("Rollback failed for user id {}", createdUser.getId(), rollbackEx);
-        }
-      }
+      rollbackUserCreation(createdUser, ex);
       throw ex;
     }
   }
@@ -146,6 +150,20 @@ public class AuthServiceImpl implements AuthService {
     } catch (Exception e) {
       log.error("Unexpected token validation error: {}", e.getMessage());
       throw new TokenValidationException("Failed validate token: " + e.getMessage());
+    }
+  }
+
+  private void rollbackUserCreation(UserResponseDto createdUser, Exception originalEx) {
+    Long userId = createdUser.getId();
+    if (userId == null) {
+      return;
+    }
+
+    try {
+      userOperationService.delete(userId);
+    } catch (Exception rollbackEx) {
+      log.error("Rollback failed for user id {}", userId, rollbackEx);
+      originalEx.addSuppressed(rollbackEx);
     }
   }
 }
